@@ -1,6 +1,8 @@
-﻿using clib.Services;
+﻿using clib.Extensions;
+using clib.Services;
 using Dalamud.Bindings.ImGui;
 using Dalamud.Interface;
+using Dalamud.Interface.Components;
 using Dalamud.Interface.Utility.Raii;
 using Dalamud.Interface.Windowing;
 using FFXIVClientStructs.FFXIV.Client.Game;
@@ -194,49 +196,54 @@ public unsafe class MainWindow : Window, IDisposable
         using (ImRaii.Disabled(!Svc.Automation.Running))
             if (ImGui.Button("Stop current task"))
                 Svc.Automation.Stop();
+
         ImGui.SameLine();
         ImGui.Text($"Status: {Svc.Automation.CurrentTask?.Status ?? "idle"}");
 
-        using var table = ImRaii.Table("main_table", 5);
+        using var table = ImRaii.Table("main_table", 4);
         if (!table)
             return;
-        ImGui.TableSetupColumn("NPC", ImGuiTableColumnFlags.WidthFixed, 100);
-        ImGui.TableSetupColumn("Bonuses", ImGuiTableColumnFlags.WidthFixed, 90);
+
+        ImGui.TableSetupColumn("NPC", ImGuiTableColumnFlags.WidthFixed, 200);
         ImGui.TableSetupColumn("Deliveries", ImGuiTableColumnFlags.WidthFixed, 120);
-        ImGui.TableSetupColumn("Achievement (weeks)", ImGuiTableColumnFlags.WidthFixed, 120);
+        ImGui.TableSetupColumn("Achievement (weeks)", ImGuiTableColumnFlags.WidthFixed, 140);
         ImGui.TableSetupColumn("Actions");
         ImGui.TableHeadersRow();
+
         foreach (var npc in _npcs)
         {
-            using var id = ImRaii.PushId(npc.Index);
-
-            ImGui.TableNextColumn();
-            ImGui.Text($"{npc.Name}");
-
-            ImGui.TableNextColumn();
-            using (ImRaii.Disabled())
-            {
-                ImGui.Checkbox("###bonus_doh", ref npc.IsBonusEffective[0]);
-                ImGui.SameLine();
-                ImGui.Checkbox("###bonus_dol", ref npc.IsBonusEffective[1]);
-                ImGui.SameLine();
-                ImGui.Checkbox("###bonus_fsh", ref npc.IsBonusEffective[2]);
-            }
-
-            ImGui.TableNextColumn();
-            ImGui.ProgressBar((float)npc.UsedDeliveries / npc.MaxDeliveries, new(120, 0), $"{npc.UsedDeliveries} / {npc.MaxDeliveries}");
-
-            ImGui.TableNextColumn();
-            if (npc.AchievementMax > 0)
-                ImGui.ProgressBar((float)npc.AchievementCur / npc.AchievementMax,
-                    new(120, 0),
-                    $"{npc.AchievementCur} / {npc.AchievementMax} ({(npc.AchievementMax - npc.AchievementCur) / 6.0:0.0})");
-            else if (npc.AchievementId != 0 && !Plugin.Config.AutoFetchAchievements && ImGui.Button("Fetch...", new(120, 0)))
-                _achi.Request(npc.AchievementId);
-
-            ImGui.TableNextColumn();
-            DrawActions(npc);
+            DrawRow(npc);
         }
+    }
+
+    public void DrawRow(NPCInfo npc)
+    {
+        ImGui.TableNextColumn();
+        ImGui.Text(npc.Name);
+
+        // ImGui.TableNextColumn();
+        // using (ImRaii.Disabled())
+        // {
+        //     ImGui.Checkbox("###bonus_doh", ref npc.IsBonusEffective[0]);
+        //     ImGui.SameLine();
+        //     ImGui.Checkbox("###bonus_dol", ref npc.IsBonusEffective[1]);
+        //     ImGui.SameLine();
+        //     ImGui.Checkbox("###bonus_fsh", ref npc.IsBonusEffective[2]);
+        // }
+
+        ImGui.TableNextColumn();
+        ImGui.ProgressBar((float)npc.UsedDeliveries / npc.MaxDeliveries, new(120, 0), $"{npc.UsedDeliveries} / {npc.MaxDeliveries}");
+
+        ImGui.TableNextColumn();
+        if (npc.AchievementMax > 0)
+            ImGui.ProgressBar((float)npc.AchievementCur / npc.AchievementMax,
+                new(140, 0),
+                $"{npc.AchievementCur} / {npc.AchievementMax} ({(npc.AchievementMax - npc.AchievementCur) / 6.0:0.0})");
+        else if (npc.AchievementId != 0 && !Plugin.Config.AutoFetchAchievements && ImGui.Button("Fetch...", new(140, 0)))
+            _achi.Request(npc.AchievementId);
+
+        ImGui.TableNextColumn();
+        DrawActions(npc);
     }
 
     private void DrawCurrenciesTable()
@@ -349,20 +356,28 @@ public unsafe class MainWindow : Window, IDisposable
         }
     }
 
+    private static readonly Vector4 Gold = new(0.80f, 0.62f, 0.15f, 1f);
+    private static readonly Vector4 GoldHovered = new(0.92f, 0.74f, 0.25f, 1f);
+    private static readonly Vector4 GoldActive = new(0.68f, 0.50f, 0.10f, 1f);
     private void DrawActions(NPCInfo npc)
     {
         var remainingTurnins = npc.MaxDeliveries - npc.UsedDeliveries;
+
         if (remainingTurnins <= 0)
             return;
 
-        if (ImGui.Button("Auto craft turnin"))
-            Svc.Automation.Start(new AutoCraft(npc));
-        ImGui.SameLine();
-        if (ImGui.Button("Auto gather turnin"))
-            Svc.Automation.Start(new AutoGather(npc));
-        ImGui.SameLine();
-        if (ImGui.Button("Auto fish turnin"))
-            Svc.Automation.Start(new AutoFish(npc));
+        if (npc.IsBonusEffective is [var doh, var dol, var fsh])
+        {
+
+            if (ImGuiComponents.IconButton(FontAwesomeIcon.Hammer, doh ? Gold : null, doh ? GoldHovered : null, doh ? GoldActive : null))
+                Svc.Automation.Start(new AutoCraft(npc));
+            ImGui.SameLine();
+            if (ImGuiComponents.IconButton(FontAwesomeIcon.WheatAwn, dol ? Gold : null, dol ? GoldHovered : null, dol ? GoldActive : null))
+                Svc.Automation.Start(new AutoGather(npc));
+            ImGui.SameLine();
+            if (ImGuiComponents.IconButton(FontAwesomeIcon.Fish, fsh ? Gold : null, fsh ? GoldHovered : null, fsh ? GoldActive : null))
+                Svc.Automation.Start(new AutoFish(npc));
+        }
     }
 
     private void OnAchievementProgress(uint id, uint current, uint max)
