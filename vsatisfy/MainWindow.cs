@@ -236,7 +236,7 @@ public unsafe class MainWindow : Window, IDisposable
 
         ImGui.TableNextColumn();
         if (npc.AchievementMax > 0)
-            ImGui.ProgressBar((float)npc.AchievementCur / npc.AchievementMax,
+            ProgressBarRightAligned((float)npc.AchievementCur / npc.AchievementMax,
                 new(140, 0),
                 $"{npc.AchievementCur} / {npc.AchievementMax} ({(npc.AchievementMax - npc.AchievementCur) / 6.0:0.0})");
         else if (npc.AchievementId != 0 && !Plugin.Config.AutoFetchAchievements && ImGui.Button("Fetch...", new(140, 0)))
@@ -244,6 +244,20 @@ public unsafe class MainWindow : Window, IDisposable
 
         ImGui.TableNextColumn();
         DrawActions(npc);
+    }
+
+    // ImGui.ProgressBar draws its overlay right after the filled part, so the text drifts
+    // with the fraction; draw it ourselves pinned to the bar's right edge instead.
+    private static void ProgressBarRightAligned(float fraction, Vector2 size, string text)
+    {
+        ImGui.ProgressBar(fraction, size, "");
+        var min = ImGui.GetItemRectMin();
+        var max = ImGui.GetItemRectMax();
+        var textSize = ImGui.CalcTextSize(text);
+        var pos = new Vector2(
+            max.X - textSize.X - ImGui.GetStyle().ItemInnerSpacing.X,
+            min.Y + (max.Y - min.Y - textSize.Y) * 0.5f);
+        ImGui.GetWindowDrawList().AddText(pos, ImGui.GetColorU32(ImGuiCol.Text), text);
     }
 
     private void DrawCurrenciesTable()
