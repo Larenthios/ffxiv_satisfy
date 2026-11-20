@@ -41,20 +41,6 @@ public unsafe class MainWindow : Window, IDisposable
                 _npcs.Add(new(npcData));
         }
 
-        // hardcoded stuff
-        //_npcs[0].InitHardcodedData(1784, 478);
-        //_npcs[1].InitHardcodedData(1979, 635);
-        //_npcs[2].InitHardcodedData(2077, 613);
-        //_npcs[3].InitHardcodedData(2193, 478);
-        //_npcs[4].InitHardcodedData(2435, 820);
-        //_npcs[5].InitHardcodedData(2633, 886);
-        //_npcs[6].InitHardcodedData(2845, 886);
-        //_npcs[7].InitHardcodedData(3069, 962);
-        //_npcs[8].InitHardcodedData(3173, 816);
-        //_npcs[9].InitHardcodedData(3361, 956);
-        //_npcs[10].InitHardcodedData(3602, 1190);
-        //_npcs[11].InitHardcodedData(3996, 1185);
-
         if (_npcs.Any(n => n.AchievementId is 0 || n.TerritoryId is 0))
             Service.Log.Warning("Some NPCs are missing hardcoded data. Please report this on GitHub.");
     }
@@ -113,6 +99,7 @@ public unsafe class MainWindow : Window, IDisposable
         var bonusOverrideRow = inst->BonusGuaranteeRowId != 0xFF ? inst->BonusGuaranteeRowId : Calculations.CalculateBonusGuarantee();
         var bonusOverride = bonusOverrideRow >= 0 ? Service.LuminaRow<SatisfactionBonusGuarantee>((uint)bonusOverrideRow) : null;
         var supplySheet = Service.LuminaSheetSubrow<SatisfactionSupply>()!;
+
         foreach (var npc in _npcs)
         {
             var sheetIndex = (byte)(npc.Index + 1);
@@ -131,6 +118,7 @@ public unsafe class MainWindow : Window, IDisposable
                 npc.IsBonusOverride[2] = bonusOverride.Value.BonusFisher.Contains(sheetIndex);
             }
             var supplyRows = supplySheet.GetRow(npc.SupplyIndex);
+
             for (int i = 0; i < npc.Requests.Length; ++i)
             {
                 npc.EffectiveRequests[i] = npc.Requests[i];
@@ -223,7 +211,7 @@ public unsafe class MainWindow : Window, IDisposable
             using var id = ImRaii.PushId(npc.Index);
 
             ImGui.TableNextColumn();
-            ImGui.Text($"[{npc.Index}] {npc.Name}");
+            ImGui.Text($"{npc.Name}");
 
             ImGui.TableNextColumn();
             using (ImRaii.Disabled())
@@ -270,7 +258,7 @@ public unsafe class MainWindow : Window, IDisposable
             var gain = reward.Amount * reward.Count;
 
             ImGui.TableNextColumn();
-            ImGui.Text($"[{reward.Currency}] {Service.LuminaRow<Item>(currItemId)?.Name}");
+            ImGui.Text($"{Service.LuminaRow<Item>(currItemId)?.Name}");
 
             ImGui.TableNextColumn();
             ImGui.Text($"{count}");
