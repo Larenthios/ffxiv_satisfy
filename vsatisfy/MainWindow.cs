@@ -218,18 +218,10 @@ public unsafe class MainWindow : Window, IDisposable
 
     public void DrawRow(NPCInfo npc)
     {
+        using var id = ImRaii.PushId(npc.Index);
+
         ImGui.TableNextColumn();
         ImGui.Text(npc.Name);
-
-        // ImGui.TableNextColumn();
-        // using (ImRaii.Disabled())
-        // {
-        //     ImGui.Checkbox("###bonus_doh", ref npc.IsBonusEffective[0]);
-        //     ImGui.SameLine();
-        //     ImGui.Checkbox("###bonus_dol", ref npc.IsBonusEffective[1]);
-        //     ImGui.SameLine();
-        //     ImGui.Checkbox("###bonus_fsh", ref npc.IsBonusEffective[2]);
-        // }
 
         ImGui.TableNextColumn();
         ImGui.ProgressBar((float)npc.UsedDeliveries / npc.MaxDeliveries, new(120, 0), $"{npc.UsedDeliveries} / {npc.MaxDeliveries}");

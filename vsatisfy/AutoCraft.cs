@@ -1,7 +1,7 @@
-using clib.Extensions;
 using clib.TaskSystem;
 using Dalamud.Game.ClientState.Conditions;
 using Dalamud.Plugin.Ipc;
+using Dalamud.Plugin.Services;
 using System.Threading.Tasks;
 
 namespace Satisfy;
@@ -21,8 +21,16 @@ public sealed class AutoCraft(NPCInfo npc) : AutoCommon
         if (npc.CraftData == null)
             throw new Exception("Craft data is not initialized");
 
+        var artisanState = Service.PluginInterface.InstalledPlugins.FirstOrDefault(p => p.InternalName == "Artisan")?.IsLoaded ?? false;
+        if (!artisanState)
+        {
+            ErrorIf(!Service.CommandManager.ProcessCommand("/xlenableplugintemp artisan"), $"Failed to load Artisan");
+            await WaitWhile(() => !(Service.PluginInterface.InstalledPlugins.FirstOrDefault(p => p.InternalName == "Artisan")?.IsLoaded ?? false), "WaitPluginLoad");
+        }
+
         var turnInItemId = npc.TurnInItems[0];
         var remainingCrafts = remainingTurnins - Game.NumItemsInInventory(turnInItemId, 1);
+
         if (remainingCrafts > 0)
         {
             var ingredient = CraftTurnin.GetCraftIngredient(turnInItemId);
@@ -41,6 +49,9 @@ public sealed class AutoCraft(NPCInfo npc) : AutoCommon
             Status = $"Crafting {remainingCrafts}x {ItemName(turnInItemId)}";
             await CraftItem(turnInItemId, remainingCrafts, remainingTurnins);
         }
+
+        if (!artisanState)
+            Service.CommandManager.ProcessCommand("/xldisableplugintemp artisan");
 
         Status = $"Turning in {remainingTurnins}x {ItemName(turnInItemId)}";
         if (Service.ClientState.TerritoryType == npc.TerritoryId)

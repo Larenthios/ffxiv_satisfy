@@ -19,8 +19,18 @@ public sealed class AutoGather(NPCInfo npc) : AutoCommon
         if (npc.GatherData == null || npc.CraftData == null)
             throw new Exception("Gather or turn-in data is not initialized");
 
+        var questionableState = Service.PluginInterface.InstalledPlugins.FirstOrDefault(p => p.InternalName == "Questionable")?.IsLoaded ?? false;
+        if (!questionableState)
+        {
+            ErrorIf(!Service.CommandManager.ProcessCommand("/xlenableplugintemp Questionable"), $"Failed to load questionable");
+            await WaitWhile(() => !(Service.PluginInterface.InstalledPlugins.FirstOrDefault(p => p.InternalName == "Questionable")?.IsLoaded ?? false), "WaitPluginLoad");
+        }
+
         if (remainingTurnins - Game.NumItemsInInventory(npc.GatherData.GatherItemId, (short)npc.GatherData.CollectabilityLow) > 0)
             await Gather();
+
+        if (!questionableState)
+            Service.CommandManager.ProcessCommand("/xldisableplugintemp questionable");
 
         Status = "Teleporting back to Npc";
         await TeleportTo(npc.TerritoryId, npc.CraftData.TurnInLocation);
